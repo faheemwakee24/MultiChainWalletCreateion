@@ -6,15 +6,21 @@ import {
   TouchableOpacity,
   Alert,
   StyleSheet,
+  Button,
+  
 } from 'react-native';
 import {ethers} from 'ethers';
 import { getProvider } from '../../Web3Helpers/Provider';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Check_box from '../../Assests/Svgs/Check_box.svg'
 const ImportWallet = () => {
   const [mnemonicOrPrivateKey, setMnemonicOrPrivateKey] = useState('');
+  const [EthPrivateKey, setEthPrivateKey] = useState('');
+  const [SolPrivateKey, setSolPrivateKey] = useState('');
   const [walletAddress, setWalletAddress] = useState('');
   const [walletBalance, setWalletBalance] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedButton, setSelectedButton] = useState(0);
   const saveToAsyncStorage = async (key, value) => {
     try {
       await AsyncStorage.setItem(key, value);
@@ -96,6 +102,11 @@ const ImportWallet = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Import Wallet</Text>
+      <View style={styles.row}>
+        <TouchableOpacity style={[styles.buttonUnselected,selectedButton==0&&styles.buttonSelected]} onPress={()=>{setSelectedButton(0)}}><Text style={selectedButton==0&&styles.activeText}>From Seed</Text></TouchableOpacity>
+        <TouchableOpacity style={[styles.buttonUnselected,selectedButton==1&&styles.buttonSelected]} onPress={()=>{setSelectedButton(1)}}><Text style={selectedButton==1&&styles.activeText}>From Ptivate Key</Text></TouchableOpacity>
+      </View>
+      {selectedButton==0?
       <TextInput
         style={styles.input}
         placeholder="Enter Mnemonic Phrase or Private Key"
@@ -104,6 +115,22 @@ const ImportWallet = () => {
         multiline
         numberOfLines={4}
       />
+      :<><TextInput
+      style={styles.input}
+      placeholder="Enter Eth Private Key"
+      value={EthPrivateKey}
+      onChangeText={setEthPrivateKey}
+      multiline
+      numberOfLines={4}
+    />
+    <TextInput
+      style={styles.input}
+      placeholder="Enter SOL Private Key"
+      value={SolPrivateKey}
+      onChangeText={setSolPrivateKey}
+      multiline
+      numberOfLines={4}
+    /></>}
       <TouchableOpacity
         style={[styles.button, isLoading && styles.buttonLoading]}
         onPress={importWallet}
@@ -174,5 +201,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 15,
   },
+  row:{
+    flexDirection:'row',
+    gap:10,
+    justifyContent:'space-between',
+    alignItems:'center',
+    marginBottom:30
+  },
+  buttonUnselected:{
+    padding:10,
+    backgroundColor:'#F5F5A1',
+    borderRadius:30
+  },
+  buttonSelected:{
+    backgroundColor:'red'
+  },
+  activeText:{
+    color:'white',  
+  }
 });
 export default ImportWallet;
