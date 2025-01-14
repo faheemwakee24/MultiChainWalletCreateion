@@ -11,13 +11,14 @@ import {
   ScrollView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage'; // AsyncStorage
-import {ethers} from 'ethers';
+import {encodeBase58, ethers} from 'ethers';
 import {useNavigation} from '@react-navigation/native';
 import {getProvider} from '../../Web3Helpers/Provider';
 import {Keypair} from '@solana/web3.js'; // For Solana
 import nacl from 'tweetnacl'; // Replacing ed25519-hd-key
 import naclUtil from 'tweetnacl-util'; // For encoding/decoding
 import * as bip39 from 'bip39'; // For generating and handling mnemonics
+import * as ed25519 from 'ed25519-hd-key';
 
 const CreateWallet = () => {
   const navigation = useNavigation();
@@ -36,35 +37,97 @@ const CreateWallet = () => {
       console.error(`Failed to save ${key}`, error);
     }
   };
+  
 
+  
+  const createBitcoinWallet = async (phrase, index = 0) => {
+    try {
+      const bip32 = require('bip32');
+      console.log('bip 32',bip32)
+      if (!bip39.validateMnemonic(phrase)) {
+        throw new Error('Invalid mnemonic');
+      }
+      const seed = await bip39.mnemonicToSeed(phrase);
+      const root = bip32.fromSeed(seed);
+  
+      const path = `m/84'/0'/0'/0/${index}`;
+      const child = root.derivePath(path);
+  
+      // const { address } = bitcoin.payments.p2wpkh({
+      //   pubkey: child.publicKey,
+      //   network: bitcoin.networks.bitcoin,
+      // });
+  console.log('private key',child.toWIF())
+      // return {
+      //   address,
+      //   privateKey: child.toWIF(),
+      //   nativeCurrency: { name: 'BTC', symbol: 'BTC', decimals: 8 },
+      // };
+    } catch (error) {
+      console.error('Failed to create wallet:', error);
+      throw error;
+    }
+  };
+  
+  const createSolanaWallet = (phrase, index = 0) => {
+    try {
+      const derivationPath = `m/44'/501'/${index}'/0'`;
+      const seed = bip39.mnemonicToSeedSync(phrase);
+      const derivedKey = ed25519.derivePath(
+        derivationPath,
+        seed.toString('hex'),
+      );
+      const keyPair = nacl.sign.keyPair.fromSeed(derivedKey.key);
+      const wallet = {
+        balance: 0,
+        address: encodeBase58(keyPair.publicKey),
+        publicKey: encodeBase58(keyPair.publicKey),
+        secretKey: encodeBase58(keyPair.secretKey),
+        nativeCurrency: {name: 'SOL', symbol: 'SOL', decimals: 9},
+      };
+      console.log('address', wallet);
+      return wallet;
+    } catch (error) {
+      logger.error(
+        new ErrorLog(
+          `Failed to create Solana wallet: ${JSON.stringify(error)}`,
+        ),
+        {type: 'error'},
+      );
+      throw new Error('Failed to create Solana wallet');
+    }
+  };
   const createWallet = async () => {
     try {
       setIsLoading(true);
       const provider = getProvider();
 
       // Generate a random mnemonic (seed phrase)
-     // const randomMnemonic = bip39.generateMnemonic();
-     const randomMnemonic="change armor reject sure close vessel face absurd report blade random again" 
-     console.log('Random Mnemonic:', randomMnemonic);
-
+      //const randomMnemonic = bip39.generateMnemonic();
+      const randomMnemonic="change armor reject sure close vessel face absurd report blade random again"
+      console.log('Random Mnemonic:', randomMnemonic);
+      const wallett = createSolanaWallet(randomMnemonic);
+      createBitcoinWallet(randomMnemonic)
+      console.log('walllllllllllllet', wallett);
       // Generate seed from mnemonic
       const seed = await bip39.mnemonicToSeed(randomMnemonic);
-
+    const solanaWallet=createSolanaWallet(randomMnemonic)
+    console.log('Solana Wallet',solanaWallet)
       // Derive Solana keypair using the seed and tweetnacl
 
-     // const solanaKeypair =  Keypair.fromSeed(seed.slice(0, 32));
-     const solanaKeypair =  Keypair.fromSeed(seed.slice(0, 32));;
-     console.log('solana key pair ',solanaKeypair)
+      // const solanaKeypair =  Keypair.fromSeed(seed.slice(0, 32));
+      //  const solanaKeypair =  Keypair.fromSeed(seed.slice(0, 32));;
+      //  console.log('solana key pair ',solanaKeypair)
 
-      const solanaPublicKey = solanaKeypair.publicKey.toString()
-      const solanaPrivateKey = naclUtil.encodeBase64(solanaKeypair.secretKey);
-      console.log('Solana public key not encooded =', solanaKeypair.publicKey);
-      console.log('Solana private key not encooded =', solanaKeypair.secretKey);
-      console.log('Solana Public Key:', solanaPublicKey);
-      console.log('Solana Private Key:', solanaPrivateKey);
+      //   const solanaPublicKey = solanaKeypair.publicKey.toString()
+      //   const solanaPrivateKey = encodeBase58(solanaKeypair.secretKey);
+      //   console.log('Solana public key not encooded =', solanaKeypair.publicKey);
+      //   console.log('Solana private key not encooded =', solanaKeypair.secretKey);
+      //   console.log('Solana Public Key:', solanaPublicKey);
+      //   console.log('Solana Private Key:', solanaPrivateKey);
 
-      setSolPublicKey(solanaPublicKey);
-      setSolPrivateKey(solanaPrivateKey);
+      setSolPublicKey(wallett?.address);
+      setSolPrivateKey(wallett?.secretKey);
       setMnemonic(randomMnemonic);
 
       // Create Ethereum wallet using ethers.js
@@ -78,12 +141,12 @@ const CreateWallet = () => {
       await saveToAsyncStorage('mnemonic', randomMnemonic);
       await saveToAsyncStorage('walletAddress', wallet.address);
       await saveToAsyncStorage('privateKey', wallet.privateKey);
-      await saveToAsyncStorage('SOLwalletAddress', solanaPublicKey);
-      await saveToAsyncStorage('SOLprivateKey', solanaPrivateKey);
+      await saveToAsyncStorage('SOLwalletAddress', wallett?.address);
+      await saveToAsyncStorage('SOLprivateKey', wallett?.secretKey);
 
       Alert.alert(
         'Wallet Created',
-        `ETH Address: ${wallet.address} \n SOL Address: ${solanaPublicKey}`,
+        `ETH Address: ${wallet.address} \n SOL Address: ${wallett?.address}`,
       );
     } catch (error) {
       console.log('Error creating wallet:', error);
