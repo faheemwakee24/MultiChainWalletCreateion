@@ -6,6 +6,8 @@ import { getProvider } from '../../Web3Helpers/Provider';
 import { useNavigation } from '@react-navigation/native';
 import QRCode from 'react-native-qrcode-svg';
 import CloseCircle from '../../Assests/Svgs/CloseCircle.svg'
+import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import "react-native-blob-util"; // Polyfill for fetch
 
 
 const WalletDashboard = () => {
@@ -18,7 +20,16 @@ const WalletDashboard = () => {
   
   const [modalVisible, setModalVisible] = useState(false);
   const data = 'Hello, this is the data to encode in the QR code!'; // Your QR code data
-
+  const getSolanaBalance = async () => {
+    try {
+      const connection = new Connection("https://api.devnet.solana.com"); // Connect to Devnet
+      const wallet = new PublicKey("nicktrLHhYzLmoVbuZQzHUTicd2sfP571orwo9jfc8c"); // Wallet address
+      const balance = await connection.getBalance(wallet); // Get balance in lamports
+      console.log(`Balance: ${balance / LAMPORTS_PER_SOL} SOL`);
+    } catch (error) {
+      console.log("Error getting balance", error);
+    }
+  };
   const toggleModal = () => {
     setModalVisible(!modalVisible);
   };
