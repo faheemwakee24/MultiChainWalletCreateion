@@ -20,6 +20,7 @@ import {
   PublicKey,
   LAMPORTS_PER_SOL,
   clusterApiUrl,
+  SystemProgram
 } from '@solana/web3.js';
 import 'react-native-blob-util'; // Polyfill for fetch
 import axios from 'axios';
@@ -30,7 +31,7 @@ const WalletDashboard = () => {
   const [providerName, setProviderName] = useState('');
   const [SOLwalletAddress, SOLsetWalletAddress] = useState(
     '4kHi6DPUHGLkF7vdfHwrSr8ncF9nXKtkyq8GhgbBxnHW',
-  );
+  ); 
   const [SOLwalletBalance, setSOLWalletBalance] = useState('');
 
   const [isLoading, setIsLoading] = useState(false);
@@ -142,11 +143,14 @@ const WalletDashboard = () => {
       setIsLoading(false);
     }
   };
-
-  useEffect(() => {
-    // Fetch wallet details on component mount
+  const FetchBalance=()=>{
+    getSolanaBalance()
     fetchCryptoPrices();
     fetchWalletDetails();
+  }
+  useEffect(() => {
+    // Fetch wallet details on component mount
+    FetchBalance()
   }, []);
 
   console.log('walletAddress', walletAddress);
