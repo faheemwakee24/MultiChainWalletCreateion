@@ -19,6 +19,7 @@ import {
 } from 'react-native-vision-camera';
 import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
 import bs58 from 'bs58';
+
 const SendFundsScreen = () => {
   const [recipientAddress, setRecipientAddress] = useState('');
   const [scannedData, setScannedData] = useState(null);
