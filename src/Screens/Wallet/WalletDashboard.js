@@ -9,6 +9,8 @@ import {
   Pressable,
   ScrollView,
   Image,
+  RefreshControl,
+  StatusBar,
 } from 'react-native';
 import {ethers} from 'ethers';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -27,6 +29,7 @@ import 'react-native-blob-util'; // Polyfill for fetch
 import axios from 'axios';
 import SendIcon from '../../Assests/Svgs/SendIcon.svg';
 import Clipboard from '@react-native-clipboard/clipboard';
+import { CHAIN_ID_ETH, CHAIN_ID_SOLANA, getEmitterAddressEth, parseSequenceFromLogEth } from "@wormhole-foundation/sdk";
 const WalletDashboard = () => {
   const navigation = useNavigation();
   const [walletAddress, setWalletAddress] = useState('');
@@ -39,10 +42,11 @@ const WalletDashboard = () => {
   );
   const [SOLwalletBalance, setSOLWalletBalance] = useState('');
 
+  const [activeRecive, setactiveRecive] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-
-  const data = 'Hello, this is the data to encode in the QR code!'; // Your QR code data
+  const [isRefreshing, setRefreshing] = useState(false);
+  
 
   const getSolanaBalance = async () => {
     try {
@@ -54,11 +58,8 @@ const WalletDashboard = () => {
       const wallet = new PublicKey(SOLwalletAddress); // Wallet address
       const balance = await connection.getBalance(wallet); // Get balance in lamports
       console.log(`Balance: ${balance / LAMPORTS_PER_SOL} SOL`);
-      Alert.alert(
-        'Solana Balance',
-        `Balance: ${(balance / LAMPORTS_PER_SOL).toFixed(4)} SOL`,
-      );
-      setSOLWalletBalance((balance / LAMPORTS_PER_SOL).toFixed(4));
+
+      setSOLWalletBalance(balance / LAMPORTS_PER_SOL);
     } catch (error) {
       console.log('Error getting balance', error);
       Alert.alert('Error', 'Failed to fetch Solana balance');
@@ -70,7 +71,7 @@ const WalletDashboard = () => {
   };
 
   const fetchPrivateKey = async () => {
-    try {
+    try { 
       const privateKey = await AsyncStorage.getItem('privateKey');
       if (!privateKey) {
         Alert.alert('Error', 'No private key found in storage');
@@ -133,20 +134,21 @@ const WalletDashboard = () => {
       );
 
       const prices = response.data;
-      const formattedPrices = Object.keys(prices).map(key =>{
-        console.log('abc',key)
-        if(key=='solana'){
-console.log('SOL price',prices[key].usd)
-setSOLPrice(prices[key].usd)
-        }else if(key=='ethereum'){
-          console.log('Eth price',prices[key].usd)
-          setEthPrice(prices[key].usd)
+      const formattedPrices = Object.keys(prices).map(key => {
+        console.log('abc', key);
+        if (key == 'solana') {
+          console.log('SOL price', prices[key].usd);
+          setSOLPrice(prices[key].usd);
+        } else if (key == 'ethereum') {
+          console.log('Eth price', prices[key].usd);
+          setEthPrice(prices[key].usd);
         }
-        return({
-        name: key.charAt(0).toUpperCase() + key.slice(1), // Capitalize the name
-        price: prices[key].usd,
-        change: prices[key].usd_24h_change?.toFixed(2), // Round percentage change to 2 decimals
-      })});
+        return {
+          name: key.charAt(0).toUpperCase() + key.slice(1), // Capitalize the name
+          price: prices[key].usd,
+          change: prices[key].usd_24h_change?.toFixed(2), // Round percentage change to 2 decimals
+        };
+      });
       console.log('crypto pricesss', formattedPrices);
 
       setCryptoPrices(formattedPrices);
@@ -159,11 +161,11 @@ setSOLPrice(prices[key].usd)
   };
   function formatNumber(number) {
     if (number >= 1e9) {
-      return (number / 1e9).toFixed(5).replace(/(\.\d*?[1-9])0+$/, "$1") + 'B'; // Convert to billions with max 5 digits after the decimal
+      return (number / 1e9).toFixed(5).replace(/(\.\d*?[1-9])0+$/, '$1') + 'B'; // Convert to billions with max 5 digits after the decimal
     } else if (number >= 1e6) {
-      return (number / 1e6).toFixed(5).replace(/(\.\d*?[1-9])0+$/, "$1") + 'M'; // Convert to millions with max 5 digits after the decimal
+      return (number / 1e6).toFixed(5).replace(/(\.\d*?[1-9])0+$/, '$1') + 'M'; // Convert to millions with max 5 digits after the decimal
     } else {
-      return number.toFixed(5).replace(/(\.\d*?[1-9])0+$/, "$1"); // Return number as-is if it's less than a million
+      return number.toFixed(5).replace(/(\.\d*?[1-9])0+$/, '$1'); // Return number as-is if it's less than a million
     }
   }
   const FetchBalance = () => {
@@ -177,13 +179,38 @@ setSOLPrice(prices[key].usd)
   }, []);
 
   console.log('walletAddress', walletAddress);
-
+  const onRefresh = () => {
+    setRefreshing(true);
+    FetchBalance();
+    setTimeout(() => setRefreshing(false), 1500); // Stop refreshing after 1.5s
+  };
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>$ {formatNumber((11.11000))}</Text>
-        <View
-          style={styles.Row}>
+      
+      <View style={styles.Row2}>
+
+
+      <Image
+              source={require('../../Assests/Svgs/ProfileIcon.png')}
+              style={styles.IconImage2}
+            />
+<StatusBar backgroundColor={'#030303'} />
+            <TouchableOpacity  onPress={() => navigation.navigate('ConnectMYWallet')}>
+            <Image
+              source={require('../../Assests/Svgs/Qrcode_2.png')}
+              style={styles.IconImage2}
+            />
+            </TouchableOpacity>
+      </View>
+      <ScrollView
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+        }
+        style={styles.container}
+        showsVerticalScrollIndicator={false}>
+          
+        <Text style={styles.title}>$ {formatNumber((SOLwalletBalance*SOLPrice)+(EthPrice*walletBalance))}</Text>
+        <View style={styles.Row}>
           <TouchableOpacity onPress={toggleModal} style={styles.InnerContainer}>
             <Image
               source={require('../../Assests/Svgs/ReciveImage.png')}
@@ -212,57 +239,55 @@ setSOLPrice(prices[key].usd)
             />
             <Text style={styles.title2}>Buy</Text>
           </TouchableOpacity>
-                  </View>
+        </View>
         {walletAddress ? (
-          <View style={styles.infoCard}>
-            <Text style={styles.label}>Wallet Address:</Text>
-            <Text style={styles.value}>{walletAddress}</Text>
+          <TouchableOpacity
+            onPress={() => {
+              Clipboard.setString(walletAddress);
+            }}
+            style={styles.infoCard}>
+                <Image
+              source={require('../../Assests/Svgs/EthIcon.png')}
+              style={styles.IconImage}
+            />
+            <View>
+              <Text style={styles.label}>Etherium</Text>
 
-            <Text style={styles.label}>Wallet Balance:</Text>
-            <Text style={styles.value}>{walletBalance} ETH</Text>
-
-            <Text style={styles.label}>Provider Name:</Text>
-            <Text style={styles.value}>{providerName}</Text>
-          </View>
+              <Text style={styles.value}>{walletBalance} ETH</Text>
+            </View>
+          </TouchableOpacity>
         ) : (
           <Text style={styles.loadingText}>
             {isLoading ? 'Loading...' : 'No Wallet Connected'}
           </Text>
         )}
         {SOLwalletAddress && (
-          <View style={styles.infoCard}>
-            <TouchableOpacity onPress={()=>{Clipboard.setString('abccc');}}><Text style={styles.label}>{SOLwalletAddress ? SOLwalletAddress.slice(0, 10) + "..." : ''}</Text></TouchableOpacity>
-            <Text style={styles.value}>{SOLwalletBalance} SOL</Text>
-          </View>
+          <TouchableOpacity
+            onPress={() => {
+              Clipboard.setString(walletAddress);
+            }}
+            style={styles.infoCard}>
+               <Image
+              source={require('../../Assests/Svgs/SOL.png')}
+              style={styles.IconImage}
+            />
+            <View>
+              <Text style={styles.label}>Solana</Text>
+              <Text style={styles.value}>{SOLwalletBalance} SOL</Text>
+            </View>
+          </TouchableOpacity>
         )}
-        <TouchableOpacity
-          style={[styles.button, isLoading && styles.buttonLoading]}
-          onPress={getSolanaBalance}
-          disabled={isLoading}>
-          <Text style={styles.buttonText}>
-            {isLoading ? 'Fetching...' : 'Refetch Balance'}
-          </Text>
-        </TouchableOpacity>
 
-  
-
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={styles.button}
           onPress={() => navigation.navigate('ConnectWallet')}>
           <Text style={styles.buttonText}>Connect Wallet</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => navigation.navigate('ConnectMYWallet')}>
-          <Text style={styles.buttonText}>Scan To connect Wallet</Text>
-        </TouchableOpacity>
+        
 
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => navigation.navigate('BrowserHome')}>
-          <Text style={styles.buttonText}>Browser</Text>
-        </TouchableOpacity>
+        
+        <Text style={styles.title3}>Top Tokens</Text>
         {cryptoPrices.length > 0 ? (
           cryptoPrices.map((crypto, index) => (
             <View key={index} style={styles.cryptoCard}>
@@ -286,6 +311,11 @@ setSOLPrice(prices[key].usd)
             {isLoading ? 'Fetching prices...' : 'No data available'}
           </Text>
         )}
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => navigation.navigate('BrowserHome')}>
+          <Text style={styles.buttonText}>Browser</Text>
+        </TouchableOpacity>
         <Modal
           animationType="fade"
           transparent={true}
@@ -294,9 +324,38 @@ setSOLPrice(prices[key].usd)
           onTouchCancel={toggleModal}>
           <Pressable onPress={toggleModal} style={styles.overlay}>
             <Pressable style={styles.qrModal}>
+
               <Text style={styles.qrTitle}>QR Code</Text>
+              <View style={styles.Row2}>
+
+              <TouchableOpacity
+          style={styles.button}
+          onPress={() => navigation.navigate('ConnectWallet')}>
+          <Text style={ styles.buttonText}>Solana</Text>
+        </TouchableOpacity> <TouchableOpacity
+          style={styles.button}
+          onPress={() => navigation.navigate('ConnectWallet')}>
+          <Text style={styles.buttonText}>Etherium</Text>
+        </TouchableOpacity>
+        </View>
+              {activeRecive==0?<TouchableOpacity
+                onPress={() => {
+                  Clipboard.setString(walletAddress);
+                }}>
+                <Text style={styles.label}>
+                  {walletAddress ? walletAddress.slice(0, 10) + '...' : ''}
+                </Text>
+              </TouchableOpacity>:<TouchableOpacity
+                onPress={() => {
+                  Clipboard.setString(SOLwalletAddress);
+                }}>
+                <Text style={styles.label}>
+                  {SOLwalletAddress ? SOLwalletAddress.slice(0, 10) + '...' : ''}
+                </Text>
+              </TouchableOpacity>}
+              
               <QRCode
-                value={walletAddress} // Data to encode
+                value={activeRecive==0? walletAddress:SOLwalletAddress} // Data to encode
                 size={200} // Size of the QR code
                 color="black" // Color of the QR code
                 backgroundColor="white" // Background color
@@ -320,22 +379,30 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 20,
     textAlign: 'center',
-    color:'#FFFFFF'
+    color: '#FFFFFF',
   },
-  
+
   title2: {
     fontSize: 15,
-    
+
     textAlign: 'center',
-    color:'#FFFFFF'
+    color: '#FFFFFF',
+  },
+  title3: {
+    fontSize: 20,
+
+    marginBottom:10,
+    color: '#FFFFFFFF',
   },
   infoCard: {
     marginBottom: 20,
     padding: 15,
-    backgroundColor: '#FFF',
+    backgroundColor: '#FFA4F1',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#CCC',
+    flexDirection: 'row',
+    width: '100%',
+    gap:15
   },
   label: {
     fontWeight: 'bold',
@@ -347,6 +414,14 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   button: {
+    backgroundColor: '#3498DB',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  
+  button2: {
     backgroundColor: '#3498DB',
     padding: 15,
     borderRadius: 8,
@@ -384,14 +459,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 25,
   },
-  
+
   scrollContainer: {
     flex: 1,
   },
   cryptoCard: {
     marginBottom: 15,
     padding: 15,
-    backgroundColor: '#FFF',
+    backgroundColor: '#FFA4F1',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#CCC',
@@ -421,19 +496,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#999',
   },
-  button: {
-    backgroundColor: '#3498DB',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginVertical: 10,
-  },
+  
   buttonText: {
     color: '#FFF',
     fontWeight: 'bold',
     fontSize: 16,
   },
-  Row:{
+  Row: {
     flexDirection: 'row',
     width: '100%',
     padding: 10,
@@ -441,8 +510,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  InnerContainer:{justifyContent: 'center', alignItems: 'center'},
-  IconImage:{height: 60, width: 60}
+  
+  Row2: {
+    flexDirection: 'row',
+    width: '100%',
+    padding: 10,
+    gap: 20,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  
+  Row3: {
+    flexDirection: 'row',
+    width: '100%',
+    padding: 10,
+    gap: 20,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  InnerContainer: {justifyContent: 'center', alignItems: 'center'},
+  IconImage: {height: 60, width: 60},
+  IconImage2: {height: 40, width: 40},
 });
 
 export default WalletDashboard;

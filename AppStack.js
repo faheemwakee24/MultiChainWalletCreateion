@@ -16,10 +16,10 @@ const Stack = createStackNavigator(); // Create Stack Navigator
 const AppStack = () => {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="CreateWallet">
+      <Stack.Navigator initialRouteName="CreateWallet" >
         <Stack.Screen name="CreateWallet" component={CreateWallet} />
         <Stack.Screen name="ImportWallet" component={ImportWallet} />
-        <Stack.Screen name="WalletDashboard" component={WalletDashboard} />
+        <Stack.Screen name="WalletDashboard" component={WalletDashboard}   options={{ headerShown: false }}   />
         <Stack.Screen name="SendFundsScreen" component={SendFundsScreen} />
 
         <Stack.Screen name="ConnectMYWallet" component={ConnectMYWallet} />
